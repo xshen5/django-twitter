@@ -13,7 +13,7 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField()
 
     def validate(self, data):
-        if not User.objects.fileter(username=data['username'].lower()).exists():
+        if not User.objects.filter(username=data['username'].lower()).exists():
             raise exceptions.ValidationError({
                 'username': 'User does not exist.'
             })
