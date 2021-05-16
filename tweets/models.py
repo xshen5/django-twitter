@@ -10,6 +10,10 @@ class Tweet(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     # updated_at = models.DateTimeField(auto_now=True)
+    # define composite index
+    class Meta:
+        index_together = (('user', 'created_at'),)
+        ordering = ('user', '-created_at') # ordering with user_id ASC and created timestamp DESC
 
     @property
     def hours_to_now(self):
