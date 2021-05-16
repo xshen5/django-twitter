@@ -1,7 +1,6 @@
-from django.test import TestCase
 from rest_framework.test import APIClient
-from django.contrib.auth.models import User
 
+from testing.testcases import TestCase
 
 LOGIN_URL = '/api/accounts/login/'
 LOGOUT_URL = '/api/accounts/logout/'
@@ -14,14 +13,11 @@ class AccountApiTests(TestCase):
     def setUp(self):
         # this function will be executed in each test function
         self.client = APIClient()
-        self.user = self.createUser(
+        self.user = self.create_user(
             username='admin',
             email='admin@twitter.com',
             password='correct password',
         )
-
-    def createUser(self, username, email, password):
-        return User.objects.create_user(username, email, password)
 
     def test_login(self):
         response = self.client.get(LOGIN_URL, {
@@ -89,7 +85,7 @@ class AccountApiTests(TestCase):
         self.assertEqual(response.status_code, 405)
 
         # return 400 when email format is incorrect
-        response = self.client.post(SIGNUP_URL,{
+        response = self.client.post(SIGNUP_URL, {
             'username': 'someone',
             'email': 'incorrect format',
             'password': 'correct password',
@@ -97,7 +93,7 @@ class AccountApiTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
         # return 400 when password is too short
-        response = self.client.post(SIGNUP_URL,{
+        response = self.client.post(SIGNUP_URL, {
             'username': 'someone',
             'email': 'soemone@some.com',
             'password': '123',
