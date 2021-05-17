@@ -8,7 +8,9 @@ class TestCase(DjangoTestCase):
     Adding a customized testcase class, so we can reuse this in other unittests
     to create user and  tweets for unit tests
     """
-    def create_user(self, username, email, password=None):
+    def create_user(self, username, email=None, password=None):
+        if email is None:
+            email = '{}@test.com'.format(username)
         if password is None:
             password = 'generic password'
         return User.objects.create_user(username, email, password)
