@@ -1,5 +1,7 @@
 from django.test import TestCase as DjangoTestCase
 from django.contrib.auth.models import User
+from rest_framework.test import APIClient
+
 from tweets.models import Tweet
 from comments.models import Comment
 
@@ -9,6 +11,13 @@ class TestCase(DjangoTestCase):
     Adding a customized testcase class, so we can reuse this in other unittests
     to create user and  tweets for unit tests
     """
+    @property
+    def anonymous_client(self):
+        if hasattr(self, '_anonymous_client'):
+            return self._anonymous_client
+        self._anonymous_client = APIClient()
+        return self._anonymous_client
+
     def create_user(self, username, email=None, password=None):
         if email is None:
             email = '{}@test.com'.format(username)
