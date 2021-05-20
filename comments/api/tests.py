@@ -18,6 +18,34 @@ class CommentApiTests(TestCase):
 
         self.tweet = self.create_tweet(self.user2)
 
+    def test_list(self):
+        # request has to have tweet_id
+        response = self.anonymous_client.get(COMMENT_URL)
+        self.assertEqual(response.status_code, 400)
+        # success retrieve tweet without comments
+        response = self.anonymous_client.get(COMMENT_URL, {'tweet_id': self.tweet.id})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['comments']), 0)
+        # add some comments
+        self.create_comment(self.user1, self.tweet,'1')
+        self.create_comment(self.user2, self.tweet, '2')
+        self.create_comment(self.user2, self.create_tweet(self.user2), '3')
+        response = self.anonymous_client.get(COMMENT_URL, {'tweet_id': self.tweet.id})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['comments']), 2)
+        # assert the comments return in order of created_at time
+        self.assertEqual(response.data['comments'][0]['content'], '1')
+        self.assertEqual(response.data['comments'][1]['content'], '2')
+        # if request contains more fields than tweet_id, only tweet_id will be used to
+        # filter result
+        response = self.anonymous_client.get(COMMENT_URL,
+                                             {
+                                                 'tweet_id': self.tweet.id,
+                                                 'user_id': self.user1.id
+                                             })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['comments']), 2)
+
     def test_create(self):
         # user has to login
         response = self.anonymous_client.post(COMMENT_URL)
