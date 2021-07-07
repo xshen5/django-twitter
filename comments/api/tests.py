@@ -4,6 +4,9 @@ from comments.models import Comment
 from django.utils import timezone
 
 COMMENT_URL = '/api/comments/'
+TWEET_LIST_URL = '/api/tweets/'
+TWEET_DETAIL_URL = '/api/tweets/{}/'
+NEWSFEED_LIST_URL = '/api/newsfeeds/'
 
 
 class CommentApiTests(TestCase):
@@ -126,3 +129,24 @@ class CommentApiTests(TestCase):
         self.assertEqual(comment.created_at, before_created_at)
         self.assertNotEqual(comment.created_at, now)
         self.assertNotEqual(comment.updated_at, before_updated_at)
+
+    def test_comments_count(self):
+        # test tweet detail api
+        tweet = self.create_tweet(self.user1)
+        url = TWEET_DETAIL_URL.format(tweet.id)
+        response = self.user2_client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['likes_count'], 0)
+
+        # test tweet list api
+        self.create_comment(self.user1, tweet)
+        response = self.user1_client.get(TWEET_LIST_URL,{'user_id': self.user1.id})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['tweets'][0]['comments_count'], 1)
+
+        # test newsfeed list api
+        self.create_comment(self.user2, tweet)
+        self.create_newsfeed(self.user2, tweet)
+        response = self.user2_client.get(NEWSFEED_LIST_URL)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['newsfeeds'][0]['tweet']['comments_count'], 2)
