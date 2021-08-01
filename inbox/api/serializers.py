@@ -4,10 +4,9 @@ from accounts.api.serializers import UserSerializer
 
 
 class NotificationSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Notification
-        fields =(
+        fields = (
             'id',
             'recipient',
             'actor_content_type',
@@ -20,3 +19,18 @@ class NotificationSerializer(serializers.ModelSerializer):
             'timestamp',
             'unread',
         )
+
+
+class NotificationSerializerForUpdate(serializers.ModelSerializer):
+    # BooleanField can accept true, false "true", "false", 1, 0
+    # and it will auto cast them to boolean "True/False" in python
+    unread = serializers.BooleanField()
+
+    class Meta:
+        model = Notification
+        fields = ('unread',)
+
+    def update(self, instance, validated_data):
+        instance.unread = validated_data['unread']
+        instance.save()
+        return instance
