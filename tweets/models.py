@@ -1,6 +1,8 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.contrib.auth.models import User
+
+from tweets.constants import TweetPhotoStatus, TWEET_PHOTO_STATUS_CHOICES
 from utils.time_helpers import utc_now
 from likes.models import Like
 
@@ -31,3 +33,39 @@ class Tweet(models.Model):
     def __str__(self):
         # the following line return when calling print(tweet instance)
         return f'{self.created_at} {self.user} {self.content}'
+
+
+class TweetPhoto(models.Model):
+    tweet = models.ForeignKey(Tweet, on_delete=models.SET_NULL, null=True)
+
+    # 谁上传了这张图片，这个信息虽然可以从 tweet 中获取到，但是重复的记录在 Image 里可以在
+    # 使用上带来很多遍历，比如某个人经常上传一些不合法的照片，那么这个人新上传的照片可以被标记
+    # 为重点审查对象。或者我们需要封禁某个用户上传的所有照片的时候，就可以通过这个 model 快速
+    # 进行筛选
+    user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+
+    file = models.FileField()
+    order = models.IntegerField(default=0)
+
+    # state of image, used for process of audit
+    status = models.IntegerField(
+        default=TweetPhotoStatus.PENDING,
+        choices=TWEET_PHOTO_STATUS_CHOICES,
+    )
+
+    # softdelete: when deleting a image, mark the requested file as deleted, and only deleted after a while,
+    # Pro: deleting image async can help increase the performance when deleting a tweet.
+    has_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        index_together = (
+            ('user', 'created_at'),
+            ('has_deleted', 'created_at'),
+            ('status', 'created_at'),
+            ('tweet', 'order'),
+        )
+
+    def __str__(self):
+        return f'{self.tweet_id}: {self.file}'
