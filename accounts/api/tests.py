@@ -1,4 +1,5 @@
 from rest_framework.test import APIClient
+from django.core.files.uploadedfile import SimpleUploadedFile
 from accounts.models import UserProfile
 from testing.testcases import TestCase
 
@@ -6,6 +7,7 @@ LOGIN_URL = '/api/accounts/login/'
 LOGOUT_URL = '/api/accounts/logout/'
 SIGNUP_URL = '/api/accounts/signup/'
 LOGIN_STATUS_URL = '/api/accounts/login_status/'
+USER_PROFILE_DETAIL_URL = '/api/profiles/{}/'
 
 
 class AccountApiTests(TestCase):
@@ -48,7 +50,7 @@ class AccountApiTests(TestCase):
         # return user data is not empty
         self.assertNotEqual(response.data['user'], None)
         # assert email
-        self.assertEqual(response.data['user']['email'], 'admin@twitter.com')
+        self.assertEqual(response.data['user']['id'], self.user.id)
         # assert login status
         response = self.client.get(LOGIN_STATUS_URL)
         self.assertEqual(response.data['has_logged_in'], True)
@@ -121,3 +123,32 @@ class AccountApiTests(TestCase):
         # 验证用户已经登入
         response = self.client.get(LOGIN_STATUS_URL)
         self.assertEqual(response.data['has_logged_in'], True)
+
+
+class UserProfileAPITests(TestCase):
+
+    def test_update(self):
+        # update nickname
+        linghu, linghu_client = self.create_user_and_client('linghu')
+        p = linghu.profile
+        url = USER_PROFILE_DETAIL_URL.format(p.id)
+
+        response = linghu_client.put(url, {
+            'nickname': 'a new nickname',
+        })
+        self.assertEqual(response.status_code, 200)
+        p.refresh_from_db()
+        self.assertEqual(p.nickname, 'a new nickname')
+
+        # update avatar
+        response = linghu_client.put(url, {
+            'avatar': SimpleUploadedFile(
+                name='my-avatar.jpg',
+                content=str.encode('a fake image'),
+                content_type='image/jpeg',
+            ),
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual('my-avatar' in response.data['avatar'], True)
+        p.refresh_from_db()
+        self.assertIsNotNone(p.avatar)
