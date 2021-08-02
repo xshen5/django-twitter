@@ -26,7 +26,7 @@ class UserProfile(models.Model):
 
     def get_profile(user):
         if hasattr(user, '_cached_user_profile'):
-            return getattr(user, '_caches_user_profile')
+            return getattr(user, '_cached_user_profile')
         profile, _ = UserProfile.objects.get_or_create(user=user)
         # ultilize attribute of user object to cache info, this is to avoid calling DB many times
         # when retrieving the same user profile
