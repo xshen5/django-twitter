@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 from rest_framework import permissions
 from rest_framework.response import Response
-
+from utils.paginations import EndlessPagination
 from tweets.models import Tweet
 from tweets.api.serializers import (
     TweetSerializer,
@@ -20,6 +20,7 @@ class TweetViewSet(viewsets.GenericViewSet,
     """
     queryset = Tweet.objects.all()
     serializer_class = TweetSerializerForCreate
+    pagination_class = EndlessPagination
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -62,6 +63,7 @@ class TweetViewSet(viewsets.GenericViewSet,
         tweets = Tweet.objects.filter(
             user_id=request.query_params['user_id']
         ).order_by('-created_at')
+        tweets = self.paginate_queryset(tweets)
         serializer = TweetSerializer(
             tweets,
             context={'request': request},
@@ -69,7 +71,7 @@ class TweetViewSet(viewsets.GenericViewSet,
         )
         # usually response in JSON format should be included in hash
         # instead of a list
-        return Response({'tweets': serializer.data})
+        return self.get_paginated_response(serializer.data)
 
     def retrieve(self, request, *args, **kwargs):
         serializer = TweetSerializerForDetail(
