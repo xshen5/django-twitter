@@ -2,7 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase as DjangoTestCase
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
-
+from django.core.cache import caches
 from tweets.models import Tweet
 from comments.models import Comment
 from newsfeeds.models import NewsFeed
@@ -14,6 +14,8 @@ class TestCase(DjangoTestCase):
     Adding a customized testcase class, so we can reuse this in other unittests
     to create user and  tweets for unit tests
     """
+    def clear_cache(self):
+        caches['testing'].clear()
 
     @property
     def anonymous_client(self):
