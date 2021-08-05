@@ -56,7 +56,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
         # invalidate following caches, so that next time when querying it, the request will be forwarded to DB
-        FriendshipService.invalidate_following_cache(request.user.id)
+        # FriendshipService.invalidate_following_cache(request.user.id)
         return Response({'success': True}, status=status.HTTP_201_CREATED)
 
     @action(methods=['POST'], detail=True, permission_classes=[IsAuthenticated])
@@ -77,5 +77,5 @@ class FriendshipViewSet(viewsets.GenericViewSet):
             to_user=pk,
         ).delete()
         # invalidate following caches, so that next time when querying it, the request will be forwarded to DB
-        FriendshipService.invalidate_following_cache(request.user.id)
+        # FriendshipService.invalidate_following_cache(request.user.id)
         return Response({'success': True, 'deleted': deleted})

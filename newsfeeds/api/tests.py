@@ -12,6 +12,7 @@ FOLLOW_URL = '/api/friendships/{}/follow/'
 class NewsFeedApiTests(TestCase):
 
     def setUp(self):
+        self.clear_cache()
 
         self.user1 = self.create_user('user1_newsfeed')
         self.user1_client = APIClient()
@@ -62,7 +63,7 @@ class NewsFeedApiTests(TestCase):
         newsfeeds = []
         for i in range(page_size * 2):
             tweet = self.create_tweet(followed_user)
-            newsfeed = self.create_newsfeed(user=self.user1,tweet=tweet)
+            newsfeed = self.create_newsfeed(user=self.user1, tweet=tweet)
             newsfeeds.append(newsfeed)
 
         newsfeeds = newsfeeds[::-1]
@@ -112,5 +113,28 @@ class NewsFeedApiTests(TestCase):
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['id'], new_newsfeed.id)
 
+    def test_user_cache(self):
+        profile = self.user2.profile
+        profile.nickname = 'user2_nickname'
+        profile.save()
 
+        self.assertEqual(self.user1.username, 'user1_newsfeed')
+        self.create_newsfeed(self.user2, self.create_tweet(self.user1))
+        self.create_newsfeed(self.user2, self.create_tweet(self.user2))
 
+        response = self.user2_client.get(NEWSFEED_URL)
+        results = response.data['results']
+        self.assertEqual(results[0]['tweet']['user']['username'], 'user2_newsfeed')
+        self.assertEqual(results[0]['tweet']['user']['nickname'], 'user2_nickname')
+        self.assertEqual(results[1]['tweet']['user']['username'], 'user1_newsfeed')
+
+        self.user1.username = 'user1'
+        self.user1.save()
+        profile.nickname = 'user1_nickname'
+        profile.save()
+
+        response = self.user2_client.get(NEWSFEED_URL)
+        results = response.data['results']
+        self.assertEqual(results[0]['tweet']['user']['username'], 'user2_newsfeed')
+        self.assertEqual(results[0]['tweet']['user']['nickname'], 'user1_nickname')
+        self.assertEqual(results[1]['tweet']['user']['username'], 'user1')
