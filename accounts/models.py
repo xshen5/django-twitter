@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save, pre_delete
+from accounts.listeners import user_changed, profile_changed
 
 
 class UserProfile(models.Model):
@@ -24,13 +26,26 @@ class UserProfile(models.Model):
     # it will invoke get_or_create in UserProfile to retrieve profile object
     # this is actually a hacky way to retrieve profile by ultilizing python nature
 
-    def get_profile(user):
-        if hasattr(user, '_cached_user_profile'):
-            return getattr(user, '_cached_user_profile')
-        profile, _ = UserProfile.objects.get_or_create(user=user)
-        # ultilize attribute of user object to cache info, this is to avoid calling DB many times
-        # when retrieving the same user profile
-        setattr(user, '_cached_user_profile', profile)
-        return profile
+
+def get_profile(user):
+    from accounts.services import UserService
+
+    if hasattr(user, '_cached_user_profile'):
+        return getattr(user, '_cached_user_profile')
+    #profile, _ = UserProfile.objects.get_or_create(user=user)
+    profile = UserService.get_profile_through_cache(user.id)
+    # utilize attribute of user object to cache info, this is to avoid calling DB many times
+    # when retrieving the same user profile
+    setattr(user, '_cached_user_profile', profile)
+    return profile
+
+
 # 给 User Model 增加了一个 profile 的 property 方法用于快捷访问
-    User.profile = property(get_profile)
+User.profile = property(get_profile)
+
+# hook up with listeners to invalidate caches
+pre_delete.connect(user_changed, sender=User)
+post_save.connect(user_changed, sender=User)
+
+pre_delete.connect(profile_changed, sender=UserProfile)
+post_save.connect(profile_changed, sender=UserProfile)

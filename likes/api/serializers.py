@@ -9,7 +9,7 @@ from django.contrib.contenttypes.models import ContentType
 
 
 class LikeSerializer(serializers.ModelSerializer):
-    user = UserSerializerForLike()
+    user = UserSerializerForLike(source='cached_user')
 
     class Meta:
         model = Like
