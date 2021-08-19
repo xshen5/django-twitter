@@ -5,6 +5,9 @@ from accounts.services import UserService
 from tweets.constants import TweetPhotoStatus, TWEET_PHOTO_STATUS_CHOICES
 from utils.time_helpers import utc_now
 from likes.models import Like
+from utils.memcached_helper import MemcachedHelper
+from django.db.models.signals import post_save
+from utils.listeners import invalidate_object_cache
 
 
 # Create your models here.
@@ -17,7 +20,7 @@ class Tweet(models.Model):
     # define composite index
     class Meta:
         index_together = (('user', 'created_at'),)
-        ordering = ('user', '-created_at') # ordering with user_id ASC and created timestamp DESC
+        ordering = ('user', '-created_at')  # ordering with user_id ASC and created timestamp DESC
 
     @property
     def hours_to_now(self):
@@ -27,7 +30,7 @@ class Tweet(models.Model):
     def like_set(self):
         return Like.objects.filter(
             content_type=ContentType.objects.get_for_model(Tweet),
-            object_id = self.id,
+            object_id=self.id,
         ).order_by('-created_at')
 
     def __str__(self):
@@ -36,7 +39,7 @@ class Tweet(models.Model):
 
     @property
     def cached_user(self):
-        return UserService.get_user_through_cache(self.user_id)
+        return MemcachedHelper.get_object_through_cache(User, self.user_id)
 
 
 class TweetPhoto(models.Model):
@@ -73,3 +76,6 @@ class TweetPhoto(models.Model):
 
     def __str__(self):
         return f'{self.tweet_id}: {self.file}'
+
+
+post_save.connect(invalidate_object_cache, sender=Tweet)

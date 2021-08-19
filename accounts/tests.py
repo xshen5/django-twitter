@@ -11,6 +11,5 @@ class UserProfileTests(TestCase):
         user1 = self.create_user('user1')
         self.assertEqual(UserProfile.objects.count(), 0)
         p = user1.profile
-        print(p)
         self.assertEqual(isinstance(p, UserProfile), True)
         self.assertEqual(UserProfile.objects.count(), 1)

@@ -9,6 +9,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from utils.permissions import IsObjectOwner
 
 from accounts.api.serializers import (
     LoginSerializer,
@@ -103,5 +104,5 @@ class UserProfileViewSet(
     viewsets.mixins.UpdateModelMixin,
 ):
     queryset = UserProfile
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (IsObjectOwner,)
     serializer_class = UserProfileSerializerForUpdate
