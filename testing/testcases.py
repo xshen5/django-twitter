@@ -7,6 +7,7 @@ from tweets.models import Tweet
 from comments.models import Comment
 from newsfeeds.models import NewsFeed
 from likes.models import Like
+from utils.redis_client import RedisClient
 
 
 class TestCase(DjangoTestCase):
@@ -15,6 +16,7 @@ class TestCase(DjangoTestCase):
     to create user and  tweets for unit tests
     """
     def clear_cache(self):
+        RedisClient.clear()
         caches['testing'].clear()
 
     @property

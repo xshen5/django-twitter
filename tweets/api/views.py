@@ -12,9 +12,7 @@ from newsfeeds.services import NewsFeedService
 from utils.decorators import required_params
 
 
-class TweetViewSet(viewsets.GenericViewSet,
-                   viewsets.mixins.CreateModelMixin,
-                   viewsets.mixins.ListModelMixin):
+class TweetViewSet(viewsets.GenericViewSet,):
     """
     API endpoint that allows user to create tweets and list tweets
     """
