@@ -14,7 +14,6 @@ class UserSerializerWithProfile(UserSerializer):
     nickname = serializers.CharField(source='profile.nickname')
     avatar_url = serializers.SerializerMethodField()
 
-
     class Meta:
         model = User
         fields = ('id', 'username', 'nickname', 'avatar_url')
@@ -40,17 +39,6 @@ class UserSerializerForFriendship(UserSerializerWithProfile):
 class UserSerializerForLike(UserSerializerWithProfile):
     pass
 
-
-class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
-    password = serializers.CharField()
-
-    def validate(self, data):
-        if not User.objects.filter(username=data['username'].lower()).exists():
-            raise exceptions.ValidationError({
-                'username': 'User does not exist.'
-            })
-        return data
 
 
 class SignupSerializer(serializers.ModelSerializer):
@@ -85,6 +73,17 @@ class SignupSerializer(serializers.ModelSerializer):
             password=password,
         )
         return user
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField()
+
+    def validate(self, data):
+        if not User.objects.filter(username=data['username'].lower()).exists():
+            raise exceptions.ValidationError({
+                'username': 'User does not exist.'
+            })
+        return data
 
 
 class UserProfileSerializerForUpdate(serializers.ModelSerializer):
