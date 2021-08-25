@@ -10,6 +10,7 @@ from tweets.api.serializers import (
 )
 from newsfeeds.services import NewsFeedService
 from utils.decorators import required_params
+from tweets.services import TweetService
 
 
 class TweetViewSet(viewsets.GenericViewSet,):
@@ -58,9 +59,7 @@ class TweetViewSet(viewsets.GenericViewSet,):
         this SQL query will be using composite index of user_id and created_at
         """
 
-        tweets = Tweet.objects.filter(
-            user_id=request.query_params['user_id']
-        ).order_by('-created_at')
+        tweets = TweetService.get_cached_tweets(user_id=request.query_params['user_id'])
         tweets = self.paginate_queryset(tweets)
         serializer = TweetSerializer(
             tweets,
