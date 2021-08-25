@@ -51,18 +51,22 @@ class TweetViewSet(viewsets.GenericViewSet,):
         """
         overloading list function, make user_id as a requirement to filter
         """
-        """
-                if 'user_id' not in request.query_params:
-            return Response('missing user_id', status=400)
-        The above line will be interpreted as following SQL:'
-        select * from twitter_tweets where user_id=xxx order by created_at DESC
-        this SQL query will be using composite index of user_id and created_at
-        """
 
-        tweets = TweetService.get_cached_tweets(user_id=request.query_params['user_id'])
-        tweets = self.paginate_queryset(tweets)
+        user_id = request.query_params['user_id']
+        cached_tweets = TweetService.get_cached_tweets(user_id)
+        page = self.paginator.paginate_cached_list(cached_tweets, request)
+        if page is None:
+            """
+                            if 'user_id' not in request.query_params:
+                        return Response('missing user_id', status=400)
+                    The above line will be interpreted as following SQL:'
+                    select * from twitter_tweets where user_id=xxx order by created_at DESC
+                    this SQL query will be using composite index of user_id and created_at
+                    """
+            queryset = Tweet.objects.filter(user_id=user_id).order_by('-created_at')
+            page = self.paginate_queryset(queryset)
         serializer = TweetSerializer(
-            tweets,
+            page,
             context={'request': request},
             many=True,
         )
