@@ -3,6 +3,11 @@ from testing.testcases import TestCase
 
 LIKE_BASE_URL = '/api/likes/'
 LIKE_CANCEL_URL = '/api/likes/cancel/'
+COMMENT_LIST_API = '/api/comments/'
+TWEET_LIST_API = '/api/tweets/'
+TWEET_DETAIL_API = '/api/tweets/{}/'
+NEWSFEED_LIST_API = '/api/newsfeeds/'
+
 
 
 class LikeApiTests(TestCase):
@@ -131,3 +136,21 @@ class LikeApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(tweet.like_set.count(), 0)
         self.assertEqual(comment.like_set.count(), 0)
+
+    def test_likes_count(self):
+        tweet = self.create_tweet(self.user1)
+        data ={'content_type': 'tweet', 'object_id': tweet.id}
+        self.user1_client.post(LIKE_BASE_URL, data)
+
+        tweet_url = TWEET_DETAIL_API.format(tweet.id)
+        response = self.user1_client.get(tweet_url)
+        self.assertEqual(response.data['likes_count'], 1)
+        tweet.refresh_from_db()
+        self.assertEqual(tweet.likes_count, 1)
+
+        self.user1_client.post(LIKE_BASE_URL + 'cancel/', data)
+        tweet.refresh_from_db()
+        self.assertEqual(tweet.likes_count, 0)
+        response = self.user2_client.get(tweet_url)
+        self.assertEqual(response.data['likes_count'], 0)
+

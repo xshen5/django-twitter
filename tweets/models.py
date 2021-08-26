@@ -16,6 +16,12 @@ class Tweet(models.Model):
     content = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # when adding new fields, make sure to allow null=True, otherwise the default=0 statement will be
+    # executed against the entire table, which increase the cost of the migration.
+    # Since migration will lock the table itself, it will stop user from accessing tweet table
+    likes_count = models.IntegerField(default=0, null=True)
+    comments_count = models.IntegerField(default=0, null=True)
+
     # updated_at = models.DateTimeField(auto_now=True)
     # define composite index
     class Meta:
