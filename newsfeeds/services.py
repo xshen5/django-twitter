@@ -2,23 +2,13 @@ from newsfeeds.models import NewsFeed
 from friendships.services import FriendshipService
 from twitter.cache import USER_NEWSFEEDS_PATTERN
 from utils.redis_helper import RedisHelper
-
+from newsfeeds.tasks import fanout_newsfeeds_task
 
 class NewsFeedService(object):
 
     @classmethod
     def fanout_to_followers(cls, tweet):
-        newsfeeds = [
-            NewsFeed(user=follower, tweet=tweet)
-            for follower in FriendshipService.get_followers(tweet.user)
-            # notice here the tweet.user is the creator of tweet
-        ]
-        newsfeeds.append(NewsFeed(user=tweet.user, tweet=tweet))
-        NewsFeed.objects.bulk_create(newsfeeds)
-
-        # bulk create will not invoke post_save signal, manually push newsfeed into cache
-        for newsfeed in newsfeeds:
-            cls.push_newsfeed_to_cache(newsfeed)
+        fanout_newsfeeds_task.delay(tweet.id)
 
     @classmethod
     def get_cached_newsfeeds(cls, user_id):
