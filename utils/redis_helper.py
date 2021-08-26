@@ -21,7 +21,6 @@ class RedisHelper:
             conn.rpush(key, *serialized_list)
             conn.expire(key, settings.REDIS_KEY_EXPIRE_TIME)
 
-
     @classmethod
     def load_objects(cls, key, queryset):
         conn = RedisClient.get_connection()
@@ -44,7 +43,7 @@ class RedisHelper:
             cls._load_objects_to_cache(key, queryset)
             return
         serialized_data = DjangoModelSerializer.serialize(obj)
-        conn.lpush(key,serialized_data)
+        conn.lpush(key, serialized_data)
         conn.ltrim(key, 0, settings.REDIS_LIST_LENGTH_LIMIT - 1)
 
     @classmethod
@@ -55,12 +54,20 @@ class RedisHelper:
     def incr_count(cls, obj, attr):
         conn = RedisClient.get_connection()
         key = cls.get_count_key(obj, attr)
+        if not conn.exists(key):
+            conn.set(key, getattr(obj, attr))
+            conn.expire(key, settings.REDIS_KEY_EXPIRE_TIME)
+            return getattr(obj, attr)
         return conn.incr(key)
 
     @classmethod
     def decr_count(cls, obj, attr):
         conn = RedisClient.get_connection()
         key = cls.get_count_key(obj, attr)
+        if not conn.exists(key):
+            conn.set(key, getattr(obj, attr))
+            conn.expire(key, settings.REDIS_KEY_EXPIRE_TIME)
+            return getattr(obj, attr)
         return conn.decr(key)
 
     @classmethod
@@ -72,6 +79,6 @@ class RedisHelper:
             return int(count)
 
         obj.refresh_from_db()
-        count =getattr(obj,attr)
+        count = getattr(obj, attr)
         conn.set(key, count)
         return count
