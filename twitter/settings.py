@@ -57,6 +57,7 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
+    'EXCEPTION_HANDLER': 'utils.ratelimit.exception_handler',
 }
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -169,7 +170,13 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
         'LOCATION': '127.0.0.1:11211',
         'TIMEOUT': 86400,
-    }
+    },
+    'ratelimit':{
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION':'127.0.0.1:11211',
+        'TIMEOUT': 86400 * 7,
+        'KEY_PREFIX': 'r1',
+    },
 }
 
 # redis
@@ -190,6 +197,11 @@ CELERY_QUEUES = (
     Queue('default', routing_key='default'),
     Queue('newsfeeds', rounting_key='newfeeds'),
 )
+
+# Rate Limiter
+RATELIMIT_USE_CACHE = 'ratelimit'
+RATELIMIT_CACHE_PREFIX = 'r1:' # to avoid key collision
+RATELIMIT_ENABLE = not TESTING # turn off rate limitting in certani environment such as TESTING
 
 
 try:

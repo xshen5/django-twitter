@@ -1,3 +1,4 @@
+from django.utils.decorators import method_decorator
 from rest_framework import viewsets
 from rest_framework import permissions
 from rest_framework.response import Response
@@ -11,7 +12,7 @@ from tweets.api.serializers import (
 from newsfeeds.services import NewsFeedService
 from utils.decorators import required_params
 from tweets.services import TweetService
-
+from ratelimit.decorators import ratelimit
 
 class TweetViewSet(viewsets.GenericViewSet, ):
     """
@@ -26,6 +27,8 @@ class TweetViewSet(viewsets.GenericViewSet, ):
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
+    @method_decorator(ratelimit(key='user_or_ip', rate='5/s', method='POST', block=True))
+    @method_decorator(ratelimit(key='user_or_ip', rate='1/m', method='POST', block=True))
     def create(self, request, *args, **kwargs):
         """
         overload create function, to default the login user as a tweet.user
@@ -76,6 +79,7 @@ class TweetViewSet(viewsets.GenericViewSet, ):
         # instead of a list
         return self.get_paginated_response(serializer.data)
 
+    @method_decorator(ratelimit(key='user_or_ip', rate='5/s', method='GET', block=True))
     def retrieve(self, request, *args, **kwargs):
         serializer = TweetSerializerForDetail(
             self.get_object(),
