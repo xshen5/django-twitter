@@ -1,7 +1,6 @@
-from django_hbase.models import HBaseField, IntegerField, TimestampField
+from django.conf import settings
 from django_hbase.client import HBaseClient
-
-import time
+from django_hbase.models import HBaseField, IntegerField, TimestampField
 
 
 class BadRowKeyError(Exception):
@@ -21,13 +20,11 @@ class HBaseModel:
     @classmethod
     def get_table(cls):
         conn = HBaseClient.get_connection()
-        if not cls.Meta.table_name:
-            raise NotImplementedError('Missing table_name in HBaseModel meta class')
-        return conn.table(cls.Meta.table_name)
+        return conn.table(cls.get_table_name())
 
     @property
     def row_key(self):
-        return self.serialize_row_key(self.__dict__, is_prefix=False)
+        return self.serialize_row_key(self.__dict__)
 
     @classmethod
     def get_field_hash(cls):
@@ -44,7 +41,7 @@ class HBaseModel:
             setattr(self, key, value)
 
     @classmethod
-    def init_from_now(cls, row_key, row_data):
+    def init_from_row(cls, row_key, row_data):
         if not row_data:
             return None
         data = cls.deserialize_row_key(row_key)
@@ -56,9 +53,9 @@ class HBaseModel:
         return cls(**data)
 
     @classmethod
-    def serialize_row_key(cls, data, is_prefix=True):
+    def serialize_row_key(cls, data):
         """
-        serialize dict to bytes(not str)
+        serialize dict to bytes (not str)
         {key1: val1} => b"val1"
         {key1: val1, key2: val2} => b"val1:val2"
         {key1: val1, key2: val2, key3: val3} => b"val1:val2:val3"
@@ -70,9 +67,11 @@ class HBaseModel:
                 continue
             value = data.get(key)
             if value is None:
-                if not is_prefix:
-                    raise BadRowKeyError(f"{key} should not contain ':' in value: {value}")
-                values.append(value)
+                raise BadRowKeyError(f"{key} is missing in row key")
+            value = cls.serialize_field(field, value)
+            if ':' in value:
+                raise BadRowKeyError(f"{key} should not contain ':' in value: {value}")
+            values.append(value)
         return bytes(':'.join(values), encoding='utf-8')
 
     @classmethod
@@ -80,14 +79,13 @@ class HBaseModel:
         """
         "val1" => {'key1': val1, 'key2': None, 'key3': None}
         "val1:val2" => {'key1': val1, 'key2': val2, 'key3': None}
-        "val1:val2:val3" => {'key1':val1, 'key2':val2, 'key3':val3}
+        "val1:val2:val3" => {'key1': val1, 'key2': val2, 'key3': val3}
         """
         data = {}
         if isinstance(row_key, bytes):
             row_key = row_key.decode('utf-8')
 
-        # val1:val2 => val1:vla2:
-        # add ':' to the end of the string, retrieve a val everytime when invoke find(':')
+        # val1:val2 => val1:val2: 方便每次 find(':') 都能找到一个 val
         row_key = row_key + ':'
         for key in cls.Meta.row_key:
             index = row_key.find(':')
@@ -101,6 +99,8 @@ class HBaseModel:
     def serialize_field(cls, field, value):
         value = str(value)
         if isinstance(field, IntegerField):
+            # 因为排序规则是按照字典序排序，那么就可能出现 1 10 2 这样的排序
+            # 解决的办法是固定 int 的位数为 16 位（8的倍数更容易利用空间），不足位补 0
             value = str(value)
             while len(value) < 16:
                 value = '0' + value
@@ -133,8 +133,8 @@ class HBaseModel:
 
     def save(self):
         row_data = self.serialize_row_data(self.__dict__)
-        # if row_data is empty, hbase will skip this row and will not return any exception
-        # therefore, the app should explicitly throw a Exception to notify the user
+        # 如果 row_data 为空，即没有任何 column key values 需要存储 hbase 会直接不存储
+        # 这个 row_key, 因此我们可以 raise 一个 exception 提醒调用者，避免存储空值
         if len(row_data) == 0:
             raise EmptyColumnError()
         table = self.get_table()
@@ -145,10 +145,40 @@ class HBaseModel:
         row_key = cls.serialize_row_key(kwargs)
         table = cls.get_table()
         row = table.row(row_key)
-        return cls.init_from_now(row_key, row)
+        return cls.init_from_row(row_key, row)
 
     @classmethod
     def create(cls, **kwargs):
         instance = cls(**kwargs)
         instance.save()
         return instance
+
+    @classmethod
+    def get_table_name(cls):
+        if not cls.Meta.table_name:
+            raise NotImplementedError('Missing table_name in HBaseModel meta class')
+        if settings.TESTING:
+            return 'test_{}'.format(cls.Meta.table_name)
+        return cls.Meta.table_name
+
+    @classmethod
+    def drop_table(cls):
+        if not settings.TESTING:
+            raise Exception('You can not drop table outside of unit tests')
+        conn = HBaseClient.get_connection()
+        conn.delete_table(cls.get_table_name(), True)
+
+    @classmethod
+    def create_table(cls):
+        if not settings.TESTING:
+            raise Exception('You can not create table outside of unit tests')
+        conn = HBaseClient.get_connection()
+        tables = [table.decode('utf-8') for table in conn.tables()]
+        if cls.get_table_name() in tables:
+            return
+        column_families = {
+            field.column_family: dict()
+            for key, field in cls.get_field_hash().items()
+            if field.column_family is not None
+        }
+        conn.create_table(cls.get_table_name(), column_families)
